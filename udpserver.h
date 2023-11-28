@@ -5,6 +5,9 @@
 #include <QUdpSocket>
 #include <QLabel>
 #include <QTimer>
+#include <QDateTime>
+#include <QTime>
+#include <QSettings>
 #include "doubleslider.h"
 
 class UDPServer : public QWidget
@@ -28,6 +31,9 @@ private:
     QLabel *heightLabel;
     DoubleSlider *heightSlider;
     QTimer *timer;
+    QTimer *timer2;
+    QDateTime dataTime;
+    QTime curTime;
 };
 
 #endif // UDPSERVER_H
