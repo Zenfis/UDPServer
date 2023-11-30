@@ -7,7 +7,9 @@
 #include <QTimer>
 #include <QDateTime>
 #include <QTime>
-#include <QSettings>
+#include <QSlider>
+#include <QVBoxLayout>
+#include <QNetworkProxy>
 #include "doubleslider.h"
 
 class UDPServer : public QWidget
@@ -27,12 +29,11 @@ private slots:
 
 private:
     QUdpSocket *udpSocket;
+    DoubleSlider *heightSlider;
     QLabel *statusLabel;
     QLabel *heightLabel;
-    DoubleSlider *heightSlider;
     QTimer *timer;
     QTimer *timer2;
-    QDateTime dataTime;
     QTime curTime;
 };
 
