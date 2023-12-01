@@ -31,13 +31,14 @@ UDPServer::UDPServer(QWidget *parent) :
     udpSocket = new QUdpSocket(this);
 
     setWindowTitle("Сервер");
-    setFixedSize(250, 100);
-    setMinimumSize(250, 100);
-    setMaximumSize(250, 100);
+    setFixedSize(220, 80);
     statusLabel = new QLabel("Связь с клиентом: нет", this);
     heightLabel = new QLabel("Текущая высота: 0 м", this);
+    heightLabel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     heightSlider = new DoubleSlider(Qt::Horizontal, this);
     heightSlider->setRange(0, 9999000);
+    heightSlider->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
+    layout->setSpacing(2);
     layout->addWidget(statusLabel);
     layout->addWidget(heightLabel);
     layout->addWidget(heightSlider);
@@ -78,22 +79,19 @@ void UDPServer::updateHeightLabel(double value)
     {
        heightLabel->setText(QString("Текущая высота: %1 м").arg(value, 0, 'f', 2));
     }
-    msg1.height = static_cast<quint16>(value); //fix
+    msg1.height = static_cast<quint16>(value);
 }
 
 void UDPServer::sendHeight()
 {
-    /*QByteArray datagram = heightLabel->text().toUtf8();
-    udpSocket->writeDatagram(datagram.constData(), datagram.size(), QHostAddress::LocalHost, 1111);
-    qDebug() << "Отправлено на клиент:"
-             << datagram.data();*/
+    QByteArray dgLabel = heightLabel->text().toUtf8();
+    udpSocket->writeDatagram(dgLabel.constData(), dgLabel.size(), QHostAddress::LocalHost, 1111);
 
     QByteArray datagram;
     QDataStream out(&datagram, QIODevice::WriteOnly);
     out << msg1.header << msg1.height;
 
     udpSocket->writeDatagram(datagram.constData(), datagram.size(), send_to_ip, send_to_port);
-    qDebug() << "Server sent height value:" << msg1.height;
 }
 
 void UDPServer::readingDatagrams()
