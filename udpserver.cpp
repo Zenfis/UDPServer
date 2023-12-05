@@ -68,7 +68,7 @@ UDPServer::UDPServer(QWidget *parent) :
     connect(heightSlider, &DoubleSlider::doubleValueChanged, this, &UDPServer::updateHeightLabel);
     connect(timer, SIGNAL(timeout()), this, SLOT(sendHeight()));
     connect(timerSignal, SIGNAL(timeout()), this, SLOT(signalClient()));
-    timer->start(25000);
+    timer->start(23000);
     timerSignal->start(2000);
 
     qDebug() << "Сервер запущен!";
