@@ -1,4 +1,5 @@
 #include "udpserver.h"
+#include <QFileInfo>
 
 #pragma pack(push, 1)
 struct Message1
@@ -18,16 +19,19 @@ struct Message2
 Message1 msg1;
 Message2 msg2;
 
-QString local_ip = "127.0.0.1";
-quint16 local_port = 9999;
-QHostAddress send_to_ip = QHostAddress::LocalHost;
-quint16 send_to_port = 1111;
+QString settingsFilePath = "C:\\Users\\user01\\Documents\\projects\\UDPServer\\settings.ini";
+QSettings settings("C:\\Users\\user01\\Documents\\projects\\UDPServer\\settings.ini", QSettings::IniFormat);
+QString server_ip = settings.value("serverhost/server_ip").toString();
+quint16 server_port = settings.value("serverhost/server_port").toUInt();
+QString client_ip = settings.value("sendtoclient/client_ip").toString();
+quint16 client_port = settings.value("sendtoclient/client_port").toUInt();
 
 UDPServer::UDPServer(QWidget *parent) :
     QWidget(parent)
 {
     QVBoxLayout *layout = new QVBoxLayout(this);
     timer = new QTimer(this);
+    timerSignal = new QTimer(this);
     udpSocket = new QUdpSocket(this);
 
     setWindowTitle("Сервер");
@@ -44,54 +48,61 @@ UDPServer::UDPServer(QWidget *parent) :
     layout->addWidget(heightSlider);
     setLayout(layout);
 
-     /*QSettings settings("settings.ini", QSettings::IniFormat);
-    QString ip = settings.value("network/server_address", "default_ip").toString();
-    quint16 port = settings.value("network/server_port", 0).toUInt();*/
+    if (!QFileInfo::exists(settingsFilePath)) { qDebug() << "Файл настроек не найден"; return; }
+    if (server_ip.isEmpty()) { qDebug() << "server_ip не указан в settings.ini"; return; }
+    if (server_port == 0) { qDebug() << "server_port не указан в settings.ini"; return; }
+    if (client_ip.isEmpty()) { qDebug() << "client_ip не указан в settings.ini"; return; }
+    if (client_port == 0) { qDebug() << "client_port не указан в settings.ini"; return; }
 
-    /*foreach(const QHostAddress &laddr, QNetworkInterface::allAddresses())
-    {
-        qDebug() << "Found IP:" << laddr.toString();
-    }*/
+    QHostAddress serverAddress;
+    bool isValid = serverAddress.setAddress(server_ip);
 
-    //if (udpSocket->bind(QHostAddress(ip), port))
-    if (udpSocket->bind(QHostAddress(local_ip), local_port))
-    {
-        connect(udpSocket, SIGNAL(readyRead()), this, SLOT(readingDatagrams()));
-        connect(heightSlider, &DoubleSlider::doubleValueChanged, this, &UDPServer::updateHeightLabel);
-        connect(timer, &QTimer::timeout, this, &UDPServer::sendHeight);
-        timer->start(25000);
-    }
-    else
-    {
-       qDebug() << "Error";
-    }
+    if (!isValid) { qDebug() << "Неверный IP адрес"; return; }
+    if (udpSocket->state() == QAbstractSocket::BoundState) { qDebug() << "Сокет уже привязан"; return; }
+
+    bool socketBinded = udpSocket->bind(serverAddress, server_port);
+
+    if (!socketBinded) { qDebug() << "Ошибка привязки сокета: " << udpSocket->errorString(); return; }
+
+    connect(udpSocket, SIGNAL(readyRead()), this, SLOT(readingDatagrams()));
+    connect(heightSlider, &DoubleSlider::doubleValueChanged, this, &UDPServer::updateHeightLabel);
+    connect(timer, SIGNAL(timeout()), this, SLOT(sendHeight()));
+    connect(timerSignal, SIGNAL(timeout()), this, SLOT(signalClient()));
+    timer->start(25000);
+    timerSignal->start(2000);
+
+    qDebug() << "Сервер запущен!";
 }
 
 UDPServer::~UDPServer(){}
 
+void UDPServer::signalClient()
+{
+    QByteArray datagram;
+    QDataStream out(&datagram, QIODevice::WriteOnly);
+    out << msg1.header << msg1.height;
+    udpSocket->writeDatagram(datagram.constData(), datagram.size(), QHostAddress(client_ip), client_port);
+    curTime = QTime::currentTime();
+    qDebug() << curTime.toString() << "- Ping";
+}
+
 void UDPServer::updateHeightLabel(double value)
 {
-    if (value == std::floor(value))
-    {
-       heightLabel->setText(QString("Текущая высота: %1 м").arg(static_cast<int>(value)));
-    }
-    else
-    {
-       heightLabel->setText(QString("Текущая высота: %1 м").arg(value, 0, 'f', 2));
-    }
+    if (value == std::floor(value)) { heightLabel->setText(QString("Текущая высота: %1 м").arg(static_cast<int>(value))); }
+    else { heightLabel->setText(QString("Текущая высота: %1 м").arg(value, 0, 'f', 2)); }
     msg1.height = static_cast<quint16>(value);
 }
 
 void UDPServer::sendHeight()
 {
     QByteArray dgLabel = heightLabel->text().toUtf8();
-    udpSocket->writeDatagram(dgLabel.constData(), dgLabel.size(), QHostAddress::LocalHost, 1111);
+    udpSocket->writeDatagram(dgLabel.constData(), dgLabel.size(), QHostAddress(client_ip), client_port);
 
     QByteArray datagram;
     QDataStream out(&datagram, QIODevice::WriteOnly);
     out << msg1.header << msg1.height;
 
-    udpSocket->writeDatagram(datagram.constData(), datagram.size(), send_to_ip, send_to_port);
+    udpSocket->writeDatagram(datagram.constData(), datagram.size(), QHostAddress(client_ip), client_port);
 }
 
 void UDPServer::readingDatagrams()
@@ -113,12 +124,8 @@ void UDPServer::readingDatagrams()
         {
             statusLabel->setText("Связь с клиентом: да");
 
-            QDataStream out(&datagram, QIODevice::WriteOnly);
-            out << msg1.header << msg1.height;
-            udpSocket->writeDatagram(datagram.constData(), datagram.size(), send_to_ip, send_to_port);
             curTime = QTime::currentTime();
             qDebug() << curTime.toString() << "- Pong";
-            qDebug() << curTime.toString() << "- Ping";
         }
     }
 }
