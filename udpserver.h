@@ -11,7 +11,7 @@
 #include <QVBoxLayout>
 #include <QNetworkProxy>
 #include <QSettings>
-#include "doubleslider.h"
+#include <QSlider>
 
 class UDPServer : public QWidget
 {
@@ -24,7 +24,7 @@ public:
 signals:
 
 private slots:
-    void updateHeightLabel(double value);
+    void updateHeightLabel(int value);
     void readingDatagrams();
     void sendHeight();
     void signalClient();
@@ -33,12 +33,13 @@ private:
     QUdpSocket *udpSocketGet;
     QUdpSocket *udpSocketSend;
     QUdpSocket *udpSocket;
-    DoubleSlider *heightSlider;
+    QSlider *heightSlider;
     QLabel *statusLabel;
     QLabel *heightLabel;
     QTimer *timer;
     QTimer *timerSignal;
-    QTime curTime;
+    QTime lastMessageTime;
+    QTime twoSecondsAgo;
 };
 
 #endif // UDPSERVER_H
